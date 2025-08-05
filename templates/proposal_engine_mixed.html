@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Proposal Engine</title>
+  <style>
+    body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; margin: 40px; background-color: #f4f6f8; color: #333; }
+    h1, h2 { color: #00b8a8; }
+    section { margin-bottom: 30px; padding: 20px; border: 1px solid #d1d1d1; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05);}
+    label { display: block; margin-top: 10px; font-weight: 600;}
+    input, select, button { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;}
+    button { background-color: #00b8a8; color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 20px;}
+    button:hover { background-color: #004080;}
+    #proposalModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000;}
+    #modalContent { background-color: #fff; padding: 30px; border-radius: 10px; width: 80%; max-width: 700px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); position: relative;}
+    #closeModal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #888;}
+    #closeModal:hover { color: #000;}
+    #proposalText { white-space: pre-wrap; margin-top: 20px; font-family: 'Segoe UI', Roboto, Arial, sans-serif; font-size: 14px; color: #333;}
+    .flash { background: #ffe5e5; border: 1px solid #c00; color: #c00; margin-bottom: 20px; border-radius: 5px; padding: 15px;}
+  </style>
+  <script>
+    function handleFirmTypeChange() {
+      const firmType = document.getElementById("firmType").value;
+      const emiOption = document.getElementById("firmSpecificServices");
+      Array.from(emiOption.options).forEach(opt => {
+        if (opt.value === "FCA EMI Authorisation") {
+          opt.style.display = (firmType === "EMI Firm") ? "block" : "none";
+        }
+      });
+      validateForm();
+    }
+
+    function handleServiceChange() {
+      const bundledService = document.getElementById("bundleServices").value;
+      const firmSpecificService = document.getElementById("firmSpecificServices").value;
+      // Healthcheck visibility
+      const hcSection = document.getElementById("healthcheck-fields");
+      hcSection.style.display = (bundledService === "Compliance Healthcheck") ? "block" : "none";
+      // EMI visibility
+      const emiSection = document.getElementById("emi-fields");
+      emiSection.style.display = (firmSpecificService === "FCA EMI Authorisation") ? "block" : "none";
+      validateForm();
+    }
+
+    function validateForm() {
+      const requiredIds = ["clientName", "firmType", "jurisdiction", "clientRep"];
+      let allFilled = requiredIds.every(id => {
+        const value = document.getElementById(id).value.trim();
+        console.log(`${id}: "${value}" - ${value !== "" ? "✓" : "✗"}`);
+        return value !== "";
+      });
+
+      console.log("Base fields filled:", allFilled);
+
+      // Add healthcheck fields if visible
+      if (document.getElementById("healthcheck-fields").style.display === "block") {
+        const healthcheckIds = [
+          "phase_1_duration", "phase_2_duration", "phase_3_duration", "phase_4_duration", "total_duration",
+          "project_lead_name", "project_lead_credentials", "project_lead_experience",
+          "senior_consultant_name", "senior_consultant_credentials", "senior_consultant_experience",
+          "service_charge", "total_fee", "payment_terms", "primary_contact_title", "contact_phone", "contact_email",
+          "office_address", "prepared_by_name", "electronic_signature"
+        ];
+        allFilled = allFilled && healthcheckIds.every(id => {
+          const el = document.getElementById(id);
+          const isValid = el && el.value.trim() !== "";
+          console.log(`Healthcheck ${id}: "${el ? el.value.trim() : 'N/A'}" - ${isValid ? "✓" : "✗"}`);
+          return isValid;  // FIXED: Element exists AND has value
+        });
+      }
+      
+      // Add EMI fields if visible
+      if (document.getElementById("emi-fields").style.display === "block") {
+        const emiIds = [
+          "total_indicative_price_range", "stage_1_price", "stage_2_price_range", "stage_3_price"
+        ];
+        allFilled = allFilled && emiIds.every(id => {
+          const el = document.getElementById(id);
+          const isValid = el && el.value.trim() !== "";
+          console.log(`EMI ${id}: "${el ? el.value.trim() : 'N/A'}" - ${isValid ? "✓" : "✗"}`);
+          return isValid;  // FIXED: Element exists AND has value
+        });
+      }
+      
+      console.log("Final validation result:", allFilled);
+      document.getElementById("generateBtn").disabled = !allFilled;
+    }
+
+    // Safe .value getter
+    function safeVal(id) {
+      var el = document.getElementById(id);
+      return el ? el.value : "";
+    }
+
+    function generateProposalPreview() {
+      let text = "Proposal Preview\n\n";
+      text += "Client Name: " + safeVal("clientName") + "\n";
+      text += "Firm Type: " + safeVal("firmType") + "\n";
+      text += "Jurisdiction: " + safeVal("jurisdiction") + "\n";
+      text += "Client Rep: " + safeVal("clientRep") + "\n\n";
+      text += "Individual Service: " + safeVal("individualServices") + "\n";
+      text += "Bundled Service: " + safeVal("bundleServices") + "\n";
+      text += "Firm-Specific Service: " + safeVal("firmSpecificServices") + "\n\n";
+      if (document.getElementById("healthcheck-fields").style.display === "block") {
+        text += "Healthcheck Details:\n";
+        text += "- Phase 1: " + safeVal("phase_1_duration") + "\n";
+        text += "- Phase 2: " + safeVal("phase_2_duration") + "\n";
+        text += "- Phase 3: " + safeVal("phase_3_duration") + "\n";
+        text += "- Phase 4: " + safeVal("phase_4_duration") + "\n";
+        text += "- Total Duration: " + safeVal("total_duration") + "\n";
+        text += "- Project Lead: " + safeVal("project_lead_name") + " (" + safeVal("project_lead_credentials") + ")\n";
+        text += "- Senior Consultant: " + safeVal("senior_consultant_name") + " (" + safeVal("senior_consultant_credentials") + ")\n";
+        text += "- Service Charge: " + safeVal("service_charge") + "\n";
+        text += "- Total Fee: " + safeVal("total_fee") + "\n";
+      }
+      if (document.getElementById("emi-fields").style.display === "block") {
+        text += "EMI Fields:\n";
+        text += "- Total Indicative Price Range: " + safeVal("total_indicative_price_range") + "\n";
+        text += "- Stage 1 Price: " + safeVal("stage_1_price") + "\n";
+        text += "- Stage 2 Price Range: " + safeVal("stage_2_price_range") + "\n";
+        text += "- Stage 3 Price: " + safeVal("stage_3_price") + "\n";
+      }
+      document.getElementById("proposalText").textContent = text;
+      document.getElementById("proposalModal").style.display = "flex";
+    }
+
+    window.onload = function () {
+      document.getElementById("firmType").onchange = handleFirmTypeChange;
+      document.getElementById("bundleServices").onchange = handleServiceChange;
+      document.getElementById("firmSpecificServices").onchange = handleServiceChange;
+      
+      // Add input event listeners for real-time validation
+      const allInputs = document.querySelectorAll('input, select');
+      allInputs.forEach(input => {
+        input.addEventListener('input', validateForm);
+        input.addEventListener('change', validateForm);
+      });
+      
+      validateForm(); // Initial validation
+    }
+  </script>
+</head>
+<body>
+  <div style="text-align: right;">
+    <img src="{{ url_for('static', filename='IQ-EQ_logo.jpg') }}" alt="IQ-EQ Logo" style="height: 80px;">
+  </div>
+  <h1>Proposal Engine</h1>
+
+  <!-- Flash message for errors or notices -->
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="flash">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if success %}
+    <section style="background: #e5ffe5; border: 1px solid #0c6; color: #0a4; text-align:center">
+      <strong>✅ Proposal Generated!</strong>
+      <a href="{{ download_link }}">Download Proposal</a>
+    </section>
+  {% endif %}
+
+  <form method="POST">
+    <!-- Client Information Section -->
+    <section id="client-info">
+      <h2>Client Information</h2>
+      <label>Client Name:</label>
+      <input type="text" id="clientName" name="client_name" required />
+
+      <label>Firm Type:</label>
+      <select id="firmType" name="firm_type" required>
+        <option value="">Select</option>
+        {% for type in firm_types %}
+          <option value="{{ type }}" {% if selected_firm == type %}selected{% endif %}>{{ type }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Jurisdiction:</label>
+      <input type="text" id="jurisdiction" name="jurisdiction" required />
+
+      <label>Client Representative:</label>
+      <input type="text" id="clientRep" name="primary_contact_name" required />
+    </section>
+
+    <!-- Service Selection Section -->
+    <section id="service-selection">
+      <h2>Service Selection</h2>
+
+      <label>Individual Services:</label>
+      <select id="individualServices" name="single_service">
+        <option value="">Select</option>
+        <option value="N/A">N/A</option>
+        {% for service in single_services %}
+          <option value="{{ service }}">{{ service }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Bundle Services:</label>
+      <select id="bundleServices" name="bundled_service">
+        <option value="">Select</option>
+        <option value="N/A">N/A</option>
+        {% for service in bundled_services %}
+          <option value="{{ service }}">{{ service }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Firm-Type Specific Services:</label>
+      <select id="firmSpecificServices" name="firm_specific_service">
+        <option value="">Select</option>
+        <option value="N/A">N/A</option>
+        {% for service in firm_specific_services %}
+          <option value="{{ service }}" {% if service == 'FCA EMI Authorisation' and selected_firm != 'EMI Firm' %}style="display:none"{% endif %}>{{ service }}</option>
+        {% endfor %}
+      </select>
+    </section>
+
+    <!-- Healthcheck Dynamic Data -->
+    <section id="healthcheck-fields" style="display:none;">
+      <h2>Healthcheck Service Details</h2>
+      <label>Phase 1 Duration: <input type="text" id="phase_1_duration" name="phase_1_duration"></label>
+      <label>Phase 2 Duration: <input type="text" id="phase_2_duration" name="phase_2_duration"></label>
+      <label>Phase 3 Duration: <input type="text" id="phase_3_duration" name="phase_3_duration"></label>
+      <label>Phase 4 Duration: <input type="text" id="phase_4_duration" name="phase_4_duration"></label>
+      <label>Total Duration: <input type="text" id="total_duration" name="total_duration"></label>
+
+      <!-- Project Team -->
+      <label>Project Lead Name: <input type="text" id="project_lead_name" name="project_lead_name"></label>
+      <label>Lead Credentials: <input type="text" id="project_lead_credentials" name="project_lead_credentials"></label>
+      <label>Lead Experience: <input type="text" id="project_lead_experience" name="project_lead_experience"></label>
+      <label>Senior Consultant Name: <input type="text" id="senior_consultant_name" name="senior_consultant_name"></label>
+      <label>Senior Credentials: <input type="text" id="senior_consultant_credentials" name="senior_consultant_credentials"></label>
+      <label>Senior Experience: <input type="text" id="senior_consultant_experience" name="senior_consultant_experience"></label>
+      <label>Additional Team Members: <input type="text" id="additional_team_members" name="additional_team_members"></label>
+
+      <!-- Fees -->
+      <label>Service Charge (£): <input type="text" id="service_charge" name="service_charge"></label>
+      <label>Hourly Rate (£): <input type="text" id="hourly_rate" name="hourly_rate"></label>
+      <label>Total Fee Estimate (£): <input type="text" id="total_fee" name="total_fee"></label>
+      <label>Payment Terms: <input type="text" id="payment_terms" name="payment_terms"></label>
+
+      <!-- Contact Details -->
+      <label>Primary Contact Title: <input type="text" id="primary_contact_title" name="primary_contact_title"></label>
+      <label>Phone Number: <input type="text" id="contact_phone" name="contact_phone"></label>
+      <label>Email Address: <input type="email" id="contact_email" name="contact_email"></label>
+      <label>Office Address: <input type="text" id="office_address" name="office_address"></label>
+
+      <!-- Prepared By -->
+      <label>Prepared By Name: <input type="text" id="prepared_by_name" name="prepared_by_name"></label>
+      <label>Electronic Signature Name: <input type="text" id="electronic_signature" name="electronic_signature"></label>
+    </section>
+
+    <!-- EMI Dynamic Data -->
+    <section id="emi-fields" style="display:none;">
+      <h2>FCA EMI Authorisation Details</h2>
+      <label>Total Indicative Price Range: <input type="text" id="total_indicative_price_range" name="total_indicative_price_range" /></label>
+      <label>Stage 1 Price: <input type="text" id="stage_1_price" name="stage_1_price" /></label>
+      <label>Stage 2 Price Range: <input type="text" id="stage_2_price_range" name="stage_2_price_range" /></label>
+      <label>Stage 3 Price: <input type="text" id="stage_3_price" name="stage_3_price" /></label>
+    </section>
+
+    <!-- Generate Button -->
+    <button id="generateBtn" type="submit" disabled>Generate Proposal</button>
+    <!-- Proposal Preview Button -->
+    <button type="button" onclick="generateProposalPreview()">Preview Proposal</button>
+  </form>
+
+  <!-- Proposal Preview Modal -->
+  <div id="proposalModal">
+    <div id="modalContent">
+      <span id="closeModal" onclick="document.getElementById('proposalModal').style.display='none';">&times;</span>
+      <h2>Proposal Preview</h2>
+      <pre id="proposalText"></pre>
+      <button type="button" onclick="downloadProposal()">Download Proposal</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("closeModal").onclick = function () {
+      document.getElementById("proposalModal").style.display = "none";
+    };
+    function downloadProposal() {
+      const text = document.getElementById("proposalText").textContent;
+      const blob = new Blob([text], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "Proposal.txt";
+      link.click();
+    }
+  </script>
+</body>
+</html>
